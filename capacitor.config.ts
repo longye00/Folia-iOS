@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// 当前文件：Folia Android Capacitor 容器的构建与 WebView 配置。
+// 当前文件：Folia Capacitor 移动容器的构建与 WebView 配置。
 
 const config: CapacitorConfig = {
   appId: 'top.izuna.foliamajor',
@@ -10,6 +10,7 @@ const config: CapacitorConfig = {
   backgroundColor: '#09090b',
   server: {
     androidScheme: 'https',
+    iosScheme: 'capacitor',
     hostname: 'localhost',
     cleartext: false,
   },

@@ -15,10 +15,12 @@ vi.mock('@capacitor/core', () => ({
 import {
   getRuntimeEnvironment,
   isCapacitorAndroid,
+  isCapacitorIos,
+  isCapacitorNative,
   supportsLocalMusicImport,
 } from '@/platform/runtime';
 
-// 当前文件：验证宿主识别与 Android 首版能力开关。
+// 当前文件：验证宿主识别与 Capacitor 移动端首版能力开关。
 
 describe('platform runtime', () => {
   beforeEach(() => {
@@ -41,14 +43,18 @@ describe('platform runtime', () => {
     capacitorState.native = true;
     capacitorState.platform = 'android';
     expect(isCapacitorAndroid()).toBe(true);
+    expect(isCapacitorNative()).toBe(true);
     expect(getRuntimeEnvironment()).toBe('capacitor-android');
     expect(supportsLocalMusicImport()).toBe(false);
   });
 
-  it('does not treat a native non-Android host as Android', () => {
+  it('recognizes Capacitor iOS and disables local music import', () => {
     capacitorState.native = true;
     capacitorState.platform = 'ios';
     expect(isCapacitorAndroid()).toBe(false);
-    expect(getRuntimeEnvironment()).toBe('web');
+    expect(isCapacitorIos()).toBe(true);
+    expect(isCapacitorNative()).toBe(true);
+    expect(getRuntimeEnvironment()).toBe('capacitor-ios');
+    expect(supportsLocalMusicImport()).toBe(false);
   });
 });

@@ -1,10 +1,10 @@
-import { isCapacitorAndroid } from '../platform/runtime';
+import { isCapacitorNative } from '../platform/runtime';
 
 // 当前文件：解析 Web 与 Capacitor 共用的 Folia 服务端 API 地址。
 
 export interface FoliaApiResolutionOptions {
   apiBase?: string | null;
-  capacitorAndroid?: boolean;
+  capacitorNative?: boolean;
 }
 
 const readConfiguredApiBase = (): string => (
@@ -22,15 +22,15 @@ export const resolveFoliaApiUrl = (
   const configuredBase = options.apiBase === undefined
     ? readConfiguredApiBase()
     : String(options.apiBase || '').trim();
-  const capacitorAndroid = options.capacitorAndroid ?? isCapacitorAndroid();
+  const capacitorNative = options.capacitorNative ?? isCapacitorNative();
   const normalizedEndpoint = normalizeEndpoint(endpoint);
 
   if (configuredBase) {
     return `${normalizeApiBase(configuredBase)}/${normalizedEndpoint}`;
   }
 
-  if (capacitorAndroid) {
-    throw new Error('VITE_FOLIA_API_BASE must be configured for the Capacitor Android build.');
+  if (capacitorNative) {
+    throw new Error('VITE_FOLIA_API_BASE must be configured for Capacitor mobile builds.');
   }
 
   return `/api/${normalizedEndpoint}`;

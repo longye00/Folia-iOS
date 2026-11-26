@@ -53,4 +53,5 @@ commit.md
 .codebuff-ai/reasson/conf.jsonc
 scripts/*
 !scripts/generate-android-assets.mjs
+!scripts/generate-ios-assets.mjs
 docs/TODO.md

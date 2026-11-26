@@ -214,19 +214,70 @@ Android `versionName` 自动读取 `package.json`；`versionCode` 从 1 开始�
 
 首版只承诺前台播放，不包含本地音乐扫描、Android 前台媒体服务、可靠后台/锁屏连续播放或 Play 商店正式上架。Navidrome 服务必须使用 HTTPS。
 
+## iOS（Capacitor 8）
+
+iOS 应用位于仓库的 `ios/`，内置 `dist/` 中的 Vite 产物；bundle identifier 固定为 `top.izuna.foliamajor`，最低支持 iOS 15。Capacitor 8 默认使用 Swift Package Manager，工程是 `ios/App/App.xcodeproj`，没有 CocoaPods 的 `App.xcworkspace`。iOS 构建同样不会注册 PWA Service Worker，本地音乐入口因为尚未接入原生文件能力因此也会隐藏。
+
+### 云端未签名 IPA
+
+`.github/workflows/ios-unsigned.yml` 在 `macos-26` runner 上执行依赖安装、Web 构建、`cap sync ios`、Xcode Release 编译和 `Payload` 打包，产出 `Folia-unsigned.ipa` artifact。该文件没有开发者签名，不能直接在 iPhone 上安装；需要用 Sideloadly、AltStore、Xcode 或其他签名流程补上有效签名。
+
+工作流优先读取手动运行时输入的 API 地址，留空时读取仓库变量 `IOS_NETEASE_API_BASE`、`IOS_KUGOU_API_BASE` 和 `IOS_FOLIA_API_BASE`。这些 `VITE_*` 值会被打包进 IPA，不是秘密；AI Key、Cookie、证书和私钥绝不能放入这些变量或提交进仓库。
+
+### 本地工具链
+
+- macOS 与 Xcode 26.0+（Capacitor 8 要求）。
+- Node.js 24+。
+- 不需要 CocoaPods；Swift Package Manager 会解析 `ios/App/CapApp-SPM/Package.swift` 中的 Capacitor 与插件依赖。
+
+首次准备：
+
+```bash
+npm ci
+npm run cap:assets:ios
+npm run cap:sync:ios
+```
+
+`cap:assets:ios` 以 `android/img/icon.png` 为源图，重新生成 iOS 应用图标及浅色、深色启动图；源图不会被修改。每次 Web 代码变化后执行 `npm run cap:sync:ios`，确保 Xcode 工程内资源已更新。
+
+未签名本地构建：
+
+```bash
+cd ios/App
+xcodebuild \
+  -project App.xcodeproj \
+  -scheme App \
+  -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath build \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGN_IDENTITY="" \
+  DEVELOPMENT_TEAM="" \
+  build
+mkdir -p Payload
+cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+zip -qry Folia-unsigned.ipa Payload
+```
+
+首版只承诺前台播放，不包含本地音乐扫描、原生 AVPlayer 播放链路、可靠后台/锁屏连续播放或 App Store 正式上架。Navidrome 与在线音乐服务应使用 HTTPS；iOS App Transport Security 默认仍会拦截不合规的明文 HTTP 生产服务。
+
 ## 常用脚本
 
 | 命令 | 说明 |
 | --- | --- |
 | `npm run dev` | 启动 Vite 开发服务器 |
 | `npm run build` | 构建 Web 版本 |
-| `npm run build:capacitor` | 构建不含 PWA Service Worker 的 Android Web 产物 |
+| `npm run build:capacitor` | 构建不含 PWA Service Worker 的移动端 Web 产物 |
 | `npm run cap:assets:android` | 从 `android/img` 的三张源图重新生成 Android 图标和启动图 |
 | `npm run cap:sync:android` | 构建 Web 产物并同步到 Android 工程 |
 | `npm run cap:open:android` | 使用 Android Studio 打开 Android 工程 |
 | `npm run cap:run:android` | 构建并运行到已连接设备或模拟器 |
 | `npm run build:android:debug` | 同步资源并生成调试 APK |
 | `npm run build:android:bundle` | 同步资源并生成发布 AAB |
+| `npm run cap:assets:ios` | 从 `android/img/icon.png` 重新生成 iOS 图标和启动图 |
+| `npm run cap:sync:ios` | 构建 Web 产物并同步到 iOS 工程 |
+| `npm run cap:open:ios` | 使用 Xcode 打开 iOS 工程（仅 macOS） |
 | `npm run preview` | 预览构建结果 |
 | `npm run dev:electron` | 启动 Electron 开发模式 |
 | `npm run dev:electron:dist` | 构建后以桌面模式运行 |

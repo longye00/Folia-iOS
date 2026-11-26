@@ -1,7 +1,7 @@
 import { Browser } from '@capacitor/browser';
 import { getRuntimeEnvironment } from '../platform/runtime';
 
-// 当前文件：按宿主环境选择 Electron、Android Custom Tab 或浏览器新窗口打开外链。
+// 当前文件：按宿主环境选择 Electron、Capacitor 内置浏览器或浏览器新窗口打开外链。
 
 export const openExternalUrl = async (url: string): Promise<boolean> => {
   const runtime = getRuntimeEnvironment();
@@ -10,7 +10,7 @@ export const openExternalUrl = async (url: string): Promise<boolean> => {
     return window.electron.openExternalUrl(url);
   }
 
-  if (runtime === 'capacitor-android') {
+  if (runtime === 'capacitor-android' || runtime === 'capacitor-ios') {
     await Browser.open({ url });
     return true;
   }

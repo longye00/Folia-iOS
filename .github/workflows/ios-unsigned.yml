@@ -1,0 +1,98 @@
+# 当前文件：在 macOS 云 runner 上构建未签名 iOS IPA，供 Windows 用户下载后自行签名安装。
+name: Build iOS IPA (Unsigned)
+
+on:
+  workflow_dispatch:
+    inputs:
+      netease_api_base:
+        description: '网易云 API HTTPS 地址；留空则读取仓库变量 IOS_NETEASE_API_BASE'
+        required: false
+        type: string
+      kugou_api_base:
+        description: '酷狗 API HTTPS 地址；留空则读取仓库变量 IOS_KUGOU_API_BASE'
+        required: false
+        type: string
+      folia_api_base:
+        description: 'Folia API HTTPS 地址（AI 主题 / 歌词代理）；留空则读取 IOS_FOLIA_API_BASE'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    name: Build unsigned IPA
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure mobile API endpoints
+        env:
+          NETEASE_API_BASE: ${{ inputs.netease_api_base || vars.IOS_NETEASE_API_BASE || '' }}
+          KUGOU_API_BASE: ${{ inputs.kugou_api_base || vars.IOS_KUGOU_API_BASE || '' }}
+          FOLIA_API_BASE: ${{ inputs.folia_api_base || vars.IOS_FOLIA_API_BASE || '' }}
+        run: |
+          printf 'VITE_NETEASE_API_BASE=%s\n' "${NETEASE_API_BASE}" > .env.local
+          printf 'VITE_KUGOU_API_BASE=%s\n' "${KUGOU_API_BASE}" >> .env.local
+          printf 'VITE_FOLIA_API_BASE=%s\n' "${FOLIA_API_BASE}" >> .env.local
+
+      - name: Build web assets and sync iOS
+        run: npm run cap:sync:ios
+
+      - name: Build unsigned iOS app
+        working-directory: ios/App
+        run: |
+          set -euo pipefail
+          APP_VERSION="$(node -p "require('../../package.json').version")"
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            MARKETING_VERSION="${APP_VERSION}" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package unsigned IPA
+        working-directory: ios/App
+        run: |
+          set -euo pipefail
+          APP_PATH="build/Build/Products/Release-iphoneos/App.app"
+          test -d "${APP_PATH}"
+          rm -rf Payload Folia-unsigned.ipa
+          mkdir -p Payload
+          cp -R "${APP_PATH}" Payload/
+          zip -qry Folia-unsigned.ipa Payload
+          unzip -t Folia-unsigned.ipa >/dev/null
+          ls -lh Folia-unsigned.ipa
+          shasum -a 256 Folia-unsigned.ipa
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v6
+        with:
+          name: folia-ios-unsigned-ipa
+          path: ios/App/Folia-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
